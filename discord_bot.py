@@ -56,6 +56,11 @@ async def on_message(message):
                 url = area_code.get_weather(city_name,area_code.area_codes_town[code])
                 await message.channel.send(f'{code}の天気は{url}\nだよ！')
                 break
+    
+    # デバック用
+    if 'おはよう' in message.content:
+        await message.channel.send(f'おはよう！{message.author.name}くん！')
+
 
         
 
