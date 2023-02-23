@@ -11,7 +11,7 @@ intents = discord.Intents.all()
 # intents.messages = True
 client = discord.Client(intents=intents)
 
-#例外 tokenとチャンネルID
+#tokenとチャンネルIDをtxtファイルから取る
 BOT_TOKEN = file_util.read_text_file('token.txt')
 CHANNEL_ID = file_util.read_text_file('channel.txt')
 
