@@ -4,6 +4,7 @@ from io import BytesIO
 from PIL import Image
 import area_code
 import file_util
+import git_util
 
 # intent設定
 intents = discord.Intents.all()
@@ -61,6 +62,13 @@ async def on_message(message):
     if 'おはよう' in message.content:
         await message.channel.send(f'おはよう！{message.author.name}くん！')
 
+    # mainからgit pullする
+    if message.content.startswith('いちごをアップデート'):
+        branch,result = git_util.git_pull()
+        if result:
+            await message.channel.send(f'最新のわたしになったよ！')
+        else:
+            await message.channel.send(f'失敗しちゃったみたい・・・')
 
         
 
