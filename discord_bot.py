@@ -5,6 +5,8 @@ from PIL import Image
 import area_code
 import file_util
 import git_util
+import sys
+import subprocess
 
 # intent設定
 intents = discord.Intents.all()
@@ -47,7 +49,7 @@ async def on_message(message):
         # 絵文字が登録されたらメッセージを送信
         if emoji:
             await message.channel.send('うんうん それもまたアイカツだね')
-            await message.channel.send('{0}が登録されたよ！'.format(emoji_name))
+            await message.channel.send(f'{emoji_name}が登録されたよ！')
 
     # 天気を知る
     # メッセージが辞書のキーのいずれかに合致する場合
@@ -61,12 +63,18 @@ async def on_message(message):
     # デバック用
     if 'おはよう' in message.content:
         await message.channel.send(f'おはよう！{message.author.name}くん！')
+    if 'さようなら' in message.content:
+        await message.channel.send(f'BOTを停止するね！')
+        sys.exit()
 
     # mainからgit pullする
     if message.content.startswith('いちごをアップデート'):
         branch,result = git_util.git_pull()
         if result:
             await message.channel.send(f'最新のわたしになったよ！')
+            subprocess.Popen(['nohup', 'python', 'discord_bot.py', '>/dev/null', '2>&1', '&'])
+            await message.channel.send(f'再起動するね！')
+            sys.exit()
         else:
             await message.channel.send(f'失敗しちゃったみたい・・・')
 
