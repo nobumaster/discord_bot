@@ -72,7 +72,7 @@ async def on_message(message):
         branch,result = git_util.git_pull()
         if result:
             await message.channel.send(f'最新のわたしになったよ！')
-            subprocess.Popen(['nohup', 'python', 'discord_bot.py', '>/dev/null', '2>&1', '&'])
+            subprocess.Popen(['nohup', 'python', 'discord_bot.py', '>/dev/null', '2>&1', '&'], shell=True)
             await message.channel.send(f'再起動するね！')
             sys.exit()
         else:
