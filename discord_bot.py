@@ -7,6 +7,14 @@ import file_util
 import git_util
 import sys
 import subprocess
+import os
+import asyncio
+import glob
+import re
+try:
+    import config
+except ImportError:
+    raise ImportError("config.pyが見つかりません")
 
 # intent設定
 intents = discord.Intents.all()
@@ -14,13 +22,66 @@ intents = discord.Intents.all()
 # intents.messages = True
 client = discord.Client(intents=intents)
 
+# チャンネルを作成
+async def create_channel(category_name, channel_name):
+    try:
+        # カテゴリを取得する
+        category = discord.utils.get(client.guilds[0].categories, name=category_name)
+        if not category:
+            # カテゴリが存在しない場合は作成する
+            category = await client.guilds[0].create_category(category_name)
+
+        # チャンネルを作成する
+        new_channel = await category.create_text_channel(channel_name)
+        # チャンネルのIDを返す
+        return new_channel.id
+    except Exception as e:
+        print(f"Failed to create channel: {e}")
+        return None
+    
+# チャンネルをアーカイブに移動する
+async def move_channel(channel_name, category_name):
+    # 移動するチャンネルを取得する
+    channel = discord.utils.get(client.guilds[0].channels, name=channel_name)
+    if channel:
+        # 移動先のカテゴリを取得する
+        category = discord.utils.get(client.guilds[0].categories, name=category_name)
+        if category:
+            # チャンネルを移動する
+            await channel.edit(category=category, reason="Moved to category")
+            # 通知をオフにする
+            await channel.edit(sync_permissions=True, reason="Turn off notifications")
+            await channel.set_permissions(client.guild.default_role, read_messages=False)
+            print(f"Moved channel {channel_name} to category {category_name} and turned off notifications.")
+            return True
+        else:
+            print(f"Category {category_name} not found.")
+            return False
+    else:
+        print(f"Channel {channel_name} not found.")
+        return False
+    
 #tokenとチャンネルIDをtxtファイルから取る
-BOT_TOKEN = file_util.read_text_file('token.txt')
-CHANNEL_ID = file_util.read_text_file('channel.txt')
+BOT_TOKEN = config.BOT_TOKEN
+CHANNEL_ID = config.CHANNEL_ID
+
+
+useMcServer = True
+mc_jardir = ''
+
+try:
+    jar_directory = config.MC_JARDIR
+    useMcServer = bool(jar_directory)
+except AttributeError:
+    print("MC_JARDIRが定義されていません")
+    useMcServer = False
 
 @client.event
 async def on_ready():
     print('私のアツいアイドル活動！アイカツ！始まります！！')
+    if not useMcServer:
+        print('MCServerの機能は使用しません')
+
 
 @client.event
 async def on_message(message):
@@ -63,7 +124,7 @@ async def on_message(message):
     # デバック用
     if 'おはよう' in message.content:
         await message.channel.send(f'おはよう！{message.author.name}くん！')
-    if 'さようなら' in message.content:
+    if 'いちごちゃんまたね' in message.content:
         await message.channel.send(f'BOTを停止するね！')
         sys.exit()
 
@@ -78,6 +139,35 @@ async def on_message(message):
         else:
             await message.channel.send(f'失敗しちゃったみたい・・・')
 
-        
+    if message.content.startswith('チャンネル作成'):
+        list = message.content.split("\n")
+        if len(list) < 3:  # メッセージが不十分な場合
+            await message.channel.send('カテゴリ名とチャンネル名を指定してください\n例:チャンネル作成\nカテゴリ\nチャンネル')
+        else:
+            new_channel_id = await create_channel(list[1],list[2])
+            if new_channel_id:
+                await message.channel.send(f'{list[1]}を作成したよ！ こちら <#{new_channel_id}>')
+            else:
+                await message.channel.send(f'チャンネル作成に失敗しました')
+
+    if message.content.startswith('チャンネルアーカイブ'):
+        result = await move_channel(message.channel.name,'Archive') # 'await'を付けて呼び出し
+        if result:
+            await message.channel.send(f'チャンネルをアーカイブにしたよ！')
+        else:
+            await message.channel.send(f'チャンネルアーカイブに失敗しました')
+
+    # メッセージが正規表現のパターンに一致するか確認
+    match = re.match(r'^(\d+\.\d+\.\d+)のサーバーを起動して$', message.content)
+    if match and useMcServer:
+        version = match.group(1)  # 正規表現に一致した部分を取得
+        jar_files = glob.glob(os.path.join('jar_directory', f'paper-{version}-*.jar'))  # パターンに一致するファイルを全て見つけます。
+
+        if not jar_files:  # 一致するファイルが存在しない場合はエラーメッセージを送信します。
+            await message.channel.send(f'バージョン{version}のJarファイルが見つかりません！')
+        else:
+            jar_file = jar_files[0]  # 最初に見つかったファイルを使用します。
+            subprocess.call(['java', '-jar', jar_file])  # ファイルが存在する場合は起動します。
+            await message.channel.send(f'バージョン{version}のサーバーが起動しました。')
 
 client.run(BOT_TOKEN)
