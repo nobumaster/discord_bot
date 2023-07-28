@@ -157,17 +157,16 @@ async def on_message(message):
         else:
             await message.channel.send(f'チャンネルアーカイブに失敗しました')
 
-    # メッセージが正規表現のパターンに一致するか確認
-    match = re.match(r'^(\d+\.\d+\.\d+)のサーバーを起動して$', message.content)
-    if match and useMcServer:
-        version = match.group(1)  # 正規表現に一致した部分を取得
-        jar_files = glob.glob(os.path.join('jar_directory', f'paper-{version}-*.jar'))  # パターンに一致するファイルを全て見つけます。
+    # configで設定したキーがメッセージにマッチしたら対応するパスのシェルスクリプトを実行
+    if message.content in config.SH_DICTIONARY:
+        script_path = config.SH_DICTIONARY[message.content]
 
-        if not jar_files:  # 一致するファイルが存在しない場合はエラーメッセージを送信します。
-            await message.channel.send(f'バージョン{version}のJarファイルが見つかりません！')
+        if not os.path.isfile(script_path):
+            await message.channel.send(f'スクリプトファイルが見つかりません: {script_path}')
         else:
-            jar_file = jar_files[0]  # 最初に見つかったファイルを使用します。
-            subprocess.call(['java', '-jar', jar_file])  # ファイルが存在する場合は起動します。
-            await message.channel.send(f'バージョン{version}のサーバーが起動しました。')
+            try:
+                subprocess.check_call(['/bin/sh', script_path])
+            except subprocess.CalledProcessError:
+                await message.channel.send(f'スクリプトの実行に失敗しました: {script_path}')
 
 client.run(BOT_TOKEN)
